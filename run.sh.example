@@ -1,0 +1,7 @@
+export RADARR_URL=http://localhost:7878
+export RADARR_API_KEY=xxxx
+export INDEXER_KEYS=xxxxx
+export CLIENT_API_KEY=xxxxx
+export COMPLETED_DIR="$HOME/Library/Mobile Documents/com~apple~CloudDocs/Audiobooks"
+python audiobook_relay.py
+
