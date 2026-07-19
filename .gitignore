@@ -1,2 +1,5 @@
 run.sh
+.env
+relay_jobs.json
+.DS_Store
 

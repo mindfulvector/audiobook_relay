@@ -1,0 +1,37 @@
+services:
+  audiobook-relay:
+    build: .
+    container_name: audiobook-relay
+    restart: unless-stopped
+    ports:
+      - "8321:8321"
+    environment:
+      # Radarr as seen FROM the container: host.docker.internal = the Mac
+      RADARR_URL: http://host.docker.internal:7878
+      # Secrets come from the .env file next to this compose file
+      RADARR_API_KEY: ${RADARR_API_KEY}
+      INDEXER_KEYS: ${INDEXER_KEYS}
+      CLIENT_API_KEY: ${CLIENT_API_KEY}
+      # Radarr reports SAB as localhost:6750; rewrite that for container use
+      REWRITE_LOCALHOST: host.docker.internal
+      # Same path inside and outside the container (see volumes below)
+      COMPLETED_DIR: ${COMPLETED_DIR}
+      # Where does SAB drop the assembled fileds?
+      SAB_COMPLETE_DIR: ${SAB_COMPLETE_DIR}
+      # Persist job state outside the container
+      JOBS_FILE: /config/relay_jobs.json
+      # NTFY_URL: https://ntfy.sh/your-secret-topic
+    volumes:
+      # Job-state persistence
+      - ./data:/config
+      # SABnzbd's completed-downloads folder, mounted at the IDENTICAL path
+      # the host uses, because the relay follows the paths SAB reports.
+      # Find it in SAB: Config -> Folders -> Completed Download Folder.
+      - "${SAB_COMPLETE_DIR}:${SAB_COMPLETE_DIR}"
+      # The iCloud library target, also mounted at its identical path so
+      # both the move and the "iCloud Drive/..." display keep working.
+      - "${COMPLETED_DIR}:${COMPLETED_DIR}"
+    extra_hosts:
+      # No-op on Docker Desktop (provided natively); makes the same file
+      # work on a Linux docker host too.
+      - "host.docker.internal:host-gateway"

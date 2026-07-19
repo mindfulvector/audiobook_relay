@@ -32,6 +32,9 @@ Optional env vars:
                        push notifications when a download finishes
     POLL_INTERVAL      seconds between SABnzbd status polls (default 10)
     JOBS_FILE          job-state file (default relay_jobs.json beside script)
+    REWRITE_LOCALHOST  for Docker: rewrite localhost/127.0.0.1 in URLs
+                       discovered from Radarr to this host, typically
+                       host.docker.internal
 
 Download tracking (progress, the move to COMPLETED_DIR, notifications)
 supports SABnzbd. NZBGet sends still work but are fire-and-forget.
@@ -90,6 +93,7 @@ INDEXER_KEY_OVERRIDES, INDEXER_KEY_FALLBACK = _parse_indexer_keys(
 
 COMPLETED_DIR = os.environ.get("COMPLETED_DIR", "").rstrip("/\\")
 NTFY_URL = os.environ.get("NTFY_URL", "")
+REWRITE_LOCALHOST = os.environ.get("REWRITE_LOCALHOST", "")
 POLL_INTERVAL = max(2, int(os.environ.get("POLL_INTERVAL", "10")))
 JOBS_FILE = os.environ.get("JOBS_FILE") or os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "relay_jobs.json")
@@ -121,6 +125,16 @@ def _field(fields, name, default=None):
 def _masked(value):
     """Radarr redacts sensitive fields as '********' in API responses."""
     return isinstance(value, str) and len(value) > 0 and set(value) == {"*"}
+
+
+def _rewrite_local(url):
+    """When the relay runs in Docker, 'localhost' in URLs discovered from
+    Radarr means the *host*, not the container. Set REWRITE_LOCALHOST
+    (e.g. host.docker.internal) to fix those URLs up."""
+    if not REWRITE_LOCALHOST:
+        return url
+    return (url.replace("//localhost", "//" + REWRITE_LOCALHOST)
+               .replace("//127.0.0.1", "//" + REWRITE_LOCALHOST))
 
 
 def load_config():
@@ -155,7 +169,8 @@ def load_config():
                         f"{name}: Radarr hides this API key -- "
                         "supply it via INDEXER_KEYS")
                 cfg["indexers"].append(
-                    {"name": name, "url": base + path, "apikey": key})
+                    {"name": name, "url": _rewrite_local(base + path),
+                     "apikey": key})
 
         r = requests.get(f"{RADARR_URL}/api/v3/downloadclient",
                          headers=headers, timeout=TIMEOUT, verify=False)
@@ -169,7 +184,8 @@ def load_config():
             host = _field(fields, "host", "localhost")
             port = _field(fields, "port")
             url_base = (_field(fields, "urlBase") or "").strip("/")
-            base = f"{scheme}://{host}:{port}" + (f"/{url_base}" if url_base else "")
+            base = _rewrite_local(
+                f"{scheme}://{host}:{port}" + (f"/{url_base}" if url_base else ""))
             if "sabnzbd" in impl:
                 key = CLIENT_API_KEY or (_field(fields, "apiKey") or "")
                 if _masked(key):
