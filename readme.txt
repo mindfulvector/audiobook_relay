@@ -7,14 +7,15 @@ those indexers and sends the NZB you pick straight to the download
 client under its own category so Radarr never touches it.
 
 Setup:
-    pip install flask requests
+    python3 -m pip install -r requirements.txt
 
 Run:
-    edit run.sh env vars to be correct
-    (Radarr API key: Settings -> General -> Security)
+    cp run.sh.example run.sh
+    # now run.sh env vars to be correct for your system
+    # Get Radarr API key here: Settings -> General -> Security
     ./run.sh
 
-Optional env vars:
+Optional env vars (set in run.sh):
     PORT               listen port                  (default 8321)
     DOWNLOAD_CATEGORY  category used on the client  (default audiobooks)
     SEARCH_CATS        Newznab categories to search (default 3030)
